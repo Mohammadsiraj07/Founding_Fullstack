@@ -15,7 +15,7 @@ This repository is a lightweight inference logging and ingestion system for an L
 
 ## Quick start
 
-1. Copy `.env.example` to `.env` and set `GEMINI_API_KEY`.
+1. Copy `.env.example` to `.env` and set `GROQ_API_KEY/GEMINI_API_KEY`.
 2. Install dependencies:
 	```bash
 	npm install
