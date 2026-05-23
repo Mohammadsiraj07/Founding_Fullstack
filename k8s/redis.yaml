@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-redis
+  namespace: llm-logger
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: llm-redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-redis
+  namespace: llm-logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-redis
+  template:
+    metadata:
+      labels:
+        app: llm-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379

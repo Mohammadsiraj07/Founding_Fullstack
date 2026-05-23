@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-postgres
+  namespace: llm-logger
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: llm-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: llm-postgres
+  namespace: llm-logger
+spec:
+  serviceName: llm-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-postgres
+  template:
+    metadata:
+      labels:
+        app: llm-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: llm_logs
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: llm-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

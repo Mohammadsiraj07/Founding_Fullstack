@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-api
+  namespace: llm-logger
+spec:
+  ports:
+    - port: 3001
+      targetPort: 3001
+  selector:
+    app: llm-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-api
+  namespace: llm-logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-api
+  template:
+    metadata:
+      labels:
+        app: llm-api
+    spec:
+      containers:
+        - name: api
+          image: llm-api:latest
+          ports:
+            - containerPort: 3001
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: REDIS_URL
+            - name: INGEST_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: INGEST_URL
+            - name: API_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: API_PORT
+            - name: DEFAULT_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: DEFAULT_MODEL
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-secrets
+                  key: GEMINI_API_KEY

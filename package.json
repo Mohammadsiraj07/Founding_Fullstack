@@ -1,0 +1,19 @@
+{
+  "name": "llm-inference-logger",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web,worker -c cyan,magenta,yellow \"npm run dev --workspace @llm/api\" \"npm run dev --workspace @llm/web\" \"npm run dev --workspace @llm/worker\"",
+    "build": "npm run build --workspace @llm/shared && npm run build --workspace @llm/logger && npm run build --workspace @llm/api && npm run build --workspace @llm/worker && npm run build --workspace @llm/web",
+    "check": "npm run check --workspace @llm/shared && npm run check --workspace @llm/logger && npm run check --workspace @llm/api && npm run check --workspace @llm/worker && npm run check --workspace @llm/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

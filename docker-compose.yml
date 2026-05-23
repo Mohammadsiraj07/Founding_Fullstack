@@ -1,0 +1,116 @@
+services:
+  deps:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    command: sh -c "npm install --include=optional"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: llm_logs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
+  redis:
+    image: redis:7-alpine
+
+  worker:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/llm_logs
+      REDIS_URL: redis://redis:6379
+      WORKER_PORT: 3002
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    command: sh -c "npm run dev --workspace @llm/worker"
+
+  api:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/llm_logs
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      REDIS_URL: redis://redis:6379
+      API_PORT: 3001
+      INGEST_URL: http://api:3001
+      DEFAULT_MODEL: gemini-2.0-flash
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    command: sh -c "npm run dev --workspace @llm/api"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    depends_on:
+      - api
+      - worker
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    command: sh -c "npm run dev --workspace @llm/web -- --host 0.0.0.0"
+
+volumes:
+  pgdata:
+  grafana-data:
+  node_modules:
